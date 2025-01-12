@@ -4,9 +4,11 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import requests  # Pour vérifier la version en ligne
 import webbrowser  # Pour ouvrir le lien de mise à jour
+import sys
+import os
 
 # Version actuelle de l'application
-CURRENT_VERSION = "1.0.0"
+CURRENT_VERSION = "1.0.1"
 
 # Fonction pour vérifier les mises à jour
 def check_for_updates():
@@ -141,6 +143,10 @@ root.title("PassCraft")
 root.geometry("800x300")
 root.resizable(False, False)
 root.config(bg="#e0f7fa")
+
+# Définir l'icône de la fenêtre
+icon_path = os.path.join(os.path.dirname(__file__), "cadenas.ico")
+root.iconbitmap(icon_path)
 
 # Vérification des mises à jour au lancement
 check_for_updates()
