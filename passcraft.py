@@ -7,7 +7,7 @@ import webbrowser  # Pour ouvrir le lien de mise à jour
 import os
 
 # Version actuelle de l'application
-CURRENT_VERSION = "1.0.2"
+CURRENT_VERSION = "1.1.0"
 
 # Fonction pour vérifier les mises à jour
 def check_for_updates():
@@ -17,7 +17,7 @@ def check_for_updates():
         latest_version = response.text.strip()
 
         if latest_version != CURRENT_VERSION:
-            if messagebox.askyesno("Mise à jour disponible", f"Une nouvelle version ({latest_version}) est disponible. Voulez-vous la télécharger ?"):
+            if messagebox.askyesno("⬆️ PassCraft - Mise à jour disponible", f"Une nouvelle version de PassCraft est disponible.\nVersion : {latest_version}\nVoulez-vous la télécharger ?"):
                 webbrowser.open("https://github.com/Kyosuke01/PassCraft/releases/latest")
     except requests.RequestException as e:
         messagebox.showerror("Erreur", f"Problème de connexion pour vérifier les mises à jour : {e}")
@@ -56,41 +56,61 @@ def generate_password():
         messagebox.showerror("Erreur", "Sélectionnez au moins un type de caractère.")
         return
 
-    char_pool = "".join(
-        [string.ascii_lowercase if use_lowercase else "",
-         string.ascii_uppercase if use_uppercase else "",
-         string.digits if use_numbers else "",
-         string.punctuation if use_special else ""]
-    )
+    # Création des pools de caractères par catégorie
+    char_pools = {
+        "lowercase": string.ascii_lowercase if use_lowercase else "",
+        "uppercase": string.ascii_uppercase if use_uppercase else "",
+        "numbers": string.digits if use_numbers else "",
+        "special": string.punctuation if use_special else "",
+    }
 
-    # Génération du mot de passe
-    password = ''.join(random.choice(char_pool) for _ in range(len_mdp))
+    # Sélection d'au moins un caractère de chaque type demandé
+    selected_chars = [
+        random.choice(pool) for pool in char_pools.values() if pool
+    ]
+
+    # Remplir le reste des caractères
+    remaining_length = len_mdp - len(selected_chars)
+    all_chars = "".join(char_pools.values())
+    if remaining_length > 0:
+        selected_chars.extend(random.choices(all_chars, k=remaining_length))
+
+    # Mélanger pour éviter que les caractères soient dans un ordre prévisible
+    random.shuffle(selected_chars)
+
+    # Conversion de la liste en chaîne
+    password = "".join(selected_chars)
 
     # Affichage du mot de passe
     create_password_row(password)
 
 # Fonction pour créer une ligne avec un mot de passe et des boutons "Copier" et "Supprimer"
 def create_password_row(password):
-    frame = tk.Frame(frame_passwords, bg="#f0f0f0", pady=5)
+    frame = tk.Frame(frame_passwords, bg="white", pady=5)
     frame.pack(fill="x", padx=5, pady=2)
 
-    text = tk.Entry(frame, width=30, font=("Arial", 10), bg="lightgray", highlightthickness=0)
+    text = tk.Entry(frame, width=30, font=("Arial", 10), highlightthickness=0)
     text.insert(0, password)
     text.config(state="readonly")
     text.pack(side="left", padx=5)
 
-    tk.Button(frame, text="Copier", command=lambda: copy_to_clipboard(password), bg="#4CAF50", fg="white", relief="flat", font=("Arial", 10)).pack(side="left", padx=5)
-    tk.Button(frame, text="Supprimer", command=lambda: delete_password(frame), bg="#f44336", fg="white", relief="flat", font=("Arial", 10)).pack(side="left", padx=5)
+    tk.Button(frame, text="Copier", command=lambda: copy_to_clipboard(password), bg="#81c9fa", fg="black", relief="flat", font=("Arial", 10)).pack(side="left", padx=5)
+    tk.Button(frame, text="Supprimer", command=lambda: delete_password(frame), bg="#ff5252", fg="black", relief="flat", font=("Arial", 10)).pack(side="left", padx=5)
 
     # Mise à jour de la zone de défilement
     canvas_passwords.update_idletasks()
     canvas_passwords.configure(scrollregion=canvas_passwords.bbox("all"))
+    update_scrollbar_visibility()
+
+def show_message(text):
+    message_label.config(text=text)
+    root.after(3000, lambda: message_label.config(text=""))  # Efface le message après 3 secondes
 
 # Fonction pour copier un mot de passe dans le presse-papier
 def copy_to_clipboard(password):
     root.clipboard_clear()
     root.clipboard_append(password)
-    messagebox.showinfo("Copié", "Mot de passe copié dans le presse-papier.")
+    show_message("Mot de passe copié dans le presse-papier.")
 
 # Fonction pour copier tous les mots de passe en une seule fois
 def copy_all_passwords():
@@ -98,13 +118,14 @@ def copy_all_passwords():
     all_passwords = "\n".join(passwords)
     root.clipboard_clear()
     root.clipboard_append(all_passwords)
-    messagebox.showinfo("Copié", "Tous les mots de passe ont été copiés dans le presse-papier.")
+    show_message("Tous les mots de passe ont été copiés dans le presse-papier.")
 
 # Fonction pour supprimer un mot de passe
 def delete_password(frame):
     frame.destroy()
     canvas_passwords.update_idletasks()
     canvas_passwords.configure(scrollregion=canvas_passwords.bbox("all"))
+    update_scrollbar_visibility()
 
 # Fonction pour supprimer tous les mots de passe générés
 def delete_all_passwords():
@@ -112,18 +133,27 @@ def delete_all_passwords():
         widget.destroy()
     canvas_passwords.update_idletasks()
     canvas_passwords.configure(scrollregion=canvas_passwords.bbox("all"))
+    update_scrollbar_visibility()
 
 # Fonction pour faire défiler avec la molette de la souris
 def on_mouse_wheel(event):
     if frame_passwords.winfo_height() > canvas_passwords.winfo_height():
         canvas_passwords.yview_scroll(-1 if event.delta > 0 else 1, "units")
 
+# Fonction pour mettre à jour la visibilité de la barre de défilement
+def update_scrollbar_visibility():
+    if frame_passwords.winfo_height() > canvas_passwords.winfo_height():
+        scrollbar_passwords.pack(side="right", fill="y")
+    else:
+        scrollbar_passwords.pack_forget()
+
 # Création de la fenêtre principale
 root = tk.Tk()
 root.title("PassCraft")
 root.geometry("800x300")
 root.resizable(False, False)
-root.config(bg="#e0f7fa")
+root.config(bg="white")
+
 try:
     root.iconbitmap(os.path.join(os.path.dirname(__file__), "cadenas.ico"))
 except Exception as e:
@@ -133,34 +163,35 @@ except Exception as e:
 check_for_updates()
 
 # Widgets pour les paramètres de génération
-frame_controls = tk.Frame(root, pady=10, bg="#b2ebf2")
+frame_controls = tk.Frame(root, pady=10, bg="white")
 frame_controls.pack(side="left", padx=10, anchor="n")
 
-tk.Label(frame_controls, text="Longueur du mot de passe :", bg="#b2ebf2", font=("Arial", 10)).grid(row=0, column=0, padx=10, pady=5)
-entry_len_mdp = tk.Entry(frame_controls, font=("Arial", 10))
+tk.Label(frame_controls, text="Longueur du mot de passe :", bg="white", font=("Arial", 10)).grid(row=0, column=0, padx=10, pady=5)
+entry_len_mdp = tk.Entry(frame_controls, font=("Arial", 10), bg="lightgrey", fg="black", bd=0, relief="flat", insertbackground="black")
 entry_len_mdp.insert(0, "20")
 entry_len_mdp.grid(row=0, column=1, padx=10, pady=5)
 
 # Checkbuttons pour les critères de génération de mot de passe
 var_lowercase, var_uppercase, var_numbers, var_special = tk.BooleanVar(value=True), tk.BooleanVar(value=True), tk.BooleanVar(value=True), tk.BooleanVar(value=True)
-for i, (text, var) in enumerate([("Lettres minuscules", var_lowercase),
-                                  ("Lettres majuscules", var_uppercase),
-                                  ("Nombres", var_numbers),
-                                  ("Caractères spéciaux", var_special)]):
-    tk.Checkbutton(frame_controls, text=text, variable=var, bg="#b2ebf2", font=("Arial", 10)).grid(row=i+1, column=0, columnspan=2)
+for i, (text, var) in enumerate([("Lettres minuscules", var_lowercase), ("Lettres majuscules", var_uppercase), ("Nombres", var_numbers), ("Caractères spéciaux", var_special)]):
+    tk.Checkbutton(frame_controls, text=text, variable=var, bg="white", fg="black", selectcolor="white", font=("Arial", 10)).grid(row=i+1, column=0, columnspan=2)
 
 # Boutons d'action
-tk.Button(frame_controls, text="Générer", command=generate_password, bg="#4CAF50", fg="white", relief="flat", font=("Arial", 10)).grid(row=5, column=0, columnspan=2, pady=10)
-tk.Button(frame_controls, text="Copier tous les mots de passe", command=copy_all_passwords, bg="#2196F3", fg="white", relief="flat", font=("Arial", 10)).grid(row=6, column=0, columnspan=2, pady=5)
-tk.Button(frame_controls, text="Supprimer tous les mots de passe", command=delete_all_passwords, bg="#f44336", fg="white", relief="flat", font=("Arial", 10)).grid(row=7, column=0, columnspan=2, pady=5)
+tk.Button(frame_controls, text="Générer", command=generate_password, bg="#5ccb5f", fg="black", relief="flat", font=("Arial", 10)).grid(row=5, column=0, columnspan=2, pady=10)
+tk.Button(frame_controls, text="Copier tous les mots de passe", command=copy_all_passwords, bg="#81c9fa", fg="black", relief="flat", font=("Arial", 10)).grid(row=6, column=0, columnspan=2, pady=5)
+tk.Button(frame_controls, text="Supprimer tous les mots de passe", command=delete_all_passwords, bg="#ff5252", fg="black", relief="flat", font=("Arial", 10)).grid(row=7, column=0, columnspan=2, pady=5)
+
+# Label pour afficher les messages
+message_label = tk.Label(root, text="", bg="white", font=("Arial", 10), fg="#009929")
+message_label.pack(side="bottom", pady=5)
 
 # Zone de défilement pour afficher les mots de passe
 frame_scroll = tk.Frame(root)
 frame_scroll.pack(side="right", fill="both", expand=True)
 
-canvas_passwords = tk.Canvas(frame_scroll, bg="#ffffff")
+canvas_passwords = tk.Canvas(frame_scroll, bg="white")
 scrollbar_passwords = ttk.Scrollbar(frame_scroll, orient="vertical", command=canvas_passwords.yview)
-frame_passwords = tk.Frame(canvas_passwords, bg="#ffffff")
+frame_passwords = tk.Frame(canvas_passwords, bg="white")
 
 canvas_passwords.create_window((0, 0), window=frame_passwords, anchor="nw")
 canvas_passwords.configure(yscrollcommand=scrollbar_passwords.set)
@@ -168,11 +199,16 @@ canvas_passwords.configure(yscrollcommand=scrollbar_passwords.set)
 canvas_passwords.pack(side="left", fill="both", expand=True)
 scrollbar_passwords.pack(side="right", fill="y")
 
+update_scrollbar_visibility()
+
 # Lier la molette de la souris pour le défilement
 canvas_passwords.bind_all("<MouseWheel>", on_mouse_wheel)
 
 # Centrer la fenêtre
 center_window(root)
+
+# Un petit délai avant de forcer le focus
+root.after(100, root.focus_force)  # 100 ms de délai
 
 # Boucle principale
 root.mainloop()
