@@ -7,7 +7,7 @@ import webbrowser  # Pour ouvrir le lien de mise à jour
 import os
 
 # Version actuelle de l'application
-CURRENT_VERSION = "1.1.0"
+CURRENT_VERSION = "1.1.1"
 
 # Fonction pour vérifier les mises à jour
 def check_for_updates():
@@ -102,9 +102,24 @@ def create_password_row(password):
     canvas_passwords.configure(scrollregion=canvas_passwords.bbox("all"))
     update_scrollbar_visibility()
 
+    # Défiler automatiquement vers le bas
+    canvas_passwords.yview_moveto(1.0)
+
+# Variable globale pour stocker l'identifiant de l'événement `after`
+message_timer_id = None
+
 def show_message(text):
+    global message_timer_id
+
+    # Annuler le délai précédent s'il existe
+    if message_timer_id is not None:
+        root.after_cancel(message_timer_id)
+
+    # Mettre à jour le texte du message
     message_label.config(text=text)
-    root.after(3000, lambda: message_label.config(text=""))  # Efface le message après 3 secondes
+
+    # Programmer un nouveau délai
+    message_timer_id = root.after(3000, lambda: message_label.config(text=""))
 
 # Fonction pour copier un mot de passe dans le presse-papier
 def copy_to_clipboard(password):
